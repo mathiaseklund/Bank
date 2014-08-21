@@ -53,7 +53,19 @@ public class Methods {
 		player.openInventory(inv);
 	}
 
-	public void goldTransit(Player player) {
+	public void goldTransit(final Player player) {
+		player.closeInventory();
+		msg.msg(player, plugin.config.getString("messages.goldtransit"));
+		plugin.transit.add(player.getName());
+		Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, new Runnable() {
+			@Override
+			public void run() {
+				if (plugin.transit.contains(player.getName())) {
+					plugin.transit.remove(player.getName());
+					msg.msg(player, "&cRemoved from banking queue");
+				}
+			}
 
+		}, 200);
 	}
 }

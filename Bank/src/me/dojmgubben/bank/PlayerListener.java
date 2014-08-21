@@ -1,11 +1,15 @@
 package me.dojmgubben.bank;
 
+import net.milkbowl.vault.economy.EconomyResponse;
+
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
@@ -59,7 +63,7 @@ public class PlayerListener implements Listener {
 			if (slot < event.getInventory().getSize()) {
 				slot = slot + 1;
 				if (item.hasItemMeta()) {
-					if (im.getDisplayName().equalsIgnoreCase(plugin.config.getString("bank.gold.name"))) {
+					if (im.getDisplayName().equalsIgnoreCase(ChatColor.translateAlternateColorCodes('&', plugin.config.getString("bank.gold.name")))) {
 						methods.goldTransit(player);
 					} else {
 						plugin.bconfig.set(player.getUniqueId().toString() + ".slot." + slot, null);
@@ -88,6 +92,48 @@ public class PlayerListener implements Listener {
 						break;
 					}
 				}
+			}
+		}
+	}
+
+	@EventHandler
+	public void onPlayerChat(AsyncPlayerChatEvent event) {
+		Player player = event.getPlayer();
+		if (plugin.transit.contains(player.getName())) {
+			String message = event.getMessage().toLowerCase();
+			if (message.split(" ")[0].contains("withdraw")) {
+				event.setCancelled(true);
+				if (plugin.isInteger(message.split(" ")[1])) {
+					int am = Integer.parseInt(message.split(" ")[1]);
+					int m = plugin.bconfig.getInt(player.getUniqueId() + ".gold");
+					if (m >= am) {
+						EconomyResponse r = plugin.economy.depositPlayer(player, am);
+						if (r.transactionSuccess()) {
+							msg.msg(player, plugin.config.getString("messages.withdraw").replace("%amount%", "" + am));
+							m = m - am;
+							plugin.bconfig.set(player.getUniqueId().toString() + ".gold", m);
+							plugin.saveb();
+							plugin.transit.remove(player.getName());
+						}
+					}
+				}
+			} else if (message.split(" ")[0].contains("deposit")) {
+				event.setCancelled(true);
+				if (plugin.isInteger(message.split(" ")[1])) {
+					int am = Integer.parseInt(message.split(" ")[1]);
+					int m = plugin.bconfig.getInt(player.getUniqueId() + ".gold");
+
+					EconomyResponse r = plugin.economy.withdrawPlayer(player, am);
+					if (r.transactionSuccess()) {
+						msg.msg(player, plugin.config.getString("messages.deposit").replace("%amount%", "" + am));
+						m = m + am;
+						plugin.bconfig.set(player.getUniqueId().toString() + ".gold", m);
+						plugin.saveb();
+						plugin.transit.remove(player.getName());
+						event.setCancelled(true);
+					}
+				}
+
 			}
 		}
 	}
